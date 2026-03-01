@@ -27,7 +27,7 @@ mt_init()
 mt_create_timer(string name, float interval, integer repeats)
 {
     mtTimerNames += [name];
-    mtTimerData += [FALSE, interval, repeats, llGetTime()];
+    mtTimerData += [FALSE, interval, repeats, 0.0];
 }
 
 mt_remove_timer(string name)
@@ -44,6 +44,7 @@ mt_start_timer(string name)
 {
     integer t_idx = llListFindList(mtTimerNames, [name]);
     mt_update_timer_data(t_idx, [TRUE], 0);
+    mt_update_timer_data(t_idx, [llGetTime()], 3);
 }
 
 // Stops a timer.
