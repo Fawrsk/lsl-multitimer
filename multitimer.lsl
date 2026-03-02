@@ -2,7 +2,7 @@
 // Author: Testicular Slingshot
 // MIT License
 
-// The interval of the main timer event, lower values provide more accuracy.
+// The interval of the main timer event, lower values provide more accurate timing.
 float MT_MAIN_INTERVAL = 0.05;
 
 // How many data fields there are for a single timer.
@@ -30,6 +30,7 @@ mt_create_timer(string name, float interval, integer repeats)
     mtTimerData += [FALSE, interval, repeats, 0.0];
 }
 
+// Removes a timer.
 mt_remove_timer(string name)
 {
     integer t_idx = llListFindList(mtTimerNames, [name]);
@@ -54,12 +55,6 @@ mt_stop_timer(string name)
     mt_update_timer_data(t_idx, [FALSE], 0);
 }
 
-// Where you handle all of your timers.
-mt_handle_timer(string name, float elapsed_time)
-{
-    llOwnerSay(name + " " + (string)elapsed_time);
-}
-
 // Replaces a singular item in the timer data list, field_idx is not item index.
 integer mt_update_timer_data(integer t_idx, list data, integer field_idx)
 {
@@ -70,7 +65,7 @@ integer mt_update_timer_data(integer t_idx, list data, integer field_idx)
     return TRUE;
 }
 
-// Check if this timer should run and if so then update data.
+// Checks if this timer should run and if so then updates data.
 mt_check_timer(integer t_idx)
 {
     string name = llList2String(mtTimerNames, t_idx);
@@ -83,16 +78,22 @@ mt_check_timer(integer t_idx)
     if (active && repeats_left != 0 && elapsed_time >= interval)
     {
         if (repeats_left > 0)
-            mt_update_timer_data(t_idx, [repeats_left - 1], 2);  // Repeats left update
+            mt_update_timer_data(t_idx, [repeats_left - 1], 2);  // Update repeats left.
 
         mt_handle_timer(name, elapsed_time);
-        mt_update_timer_data(t_idx, [llGetTime()], 3);  // Last run update
+        mt_update_timer_data(t_idx, [llGetTime()], 3);  // Update last run.
     }
+    // Clean up.
     else if (repeats_left == 0)
     {
-        // Clean up
         mt_remove_timer(name);
     }
+}
+
+// Handle your timers here.
+mt_handle_timer(string name, float elapsed_time)
+{
+    llOwnerSay(name + " " + (string)elapsed_time);
 }
 
 default
@@ -101,7 +102,7 @@ default
     {
         mt_init();
 
-        // Example code
+        // Example code.
         mt_create_timer("t1", 0.2, 2);
         mt_start_timer("t1");
         mt_create_timer("t2", 1.0, -1);
