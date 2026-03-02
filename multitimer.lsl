@@ -12,22 +12,21 @@ integer MT_NUM_OF_DATA_FIELDS = 4;
 // won't conflict with data of the same type.
 list mtTimerNames;
 
-// Timer data is strided in relation to mtTimerNames: [active, interval, repeats_left, last_run_time]
+// Timer data is strided in relation to mtTimerNames: [active, interval, count_remaining, last_run_time]
 list mtTimerData;
 
-// Must be called before usage of the library.
-mt_init()
-{
-    llSetTimerEvent(MT_MAIN_INTERVAL);
-    mtTimerNames = [];
-    mtTimerData = [];
-}
+// Timers marked for cleanup at the end of the main timer event.
+list mtDeadTimers;
 
-// Creates a timer. Setting repeats to less than 0 means infinite repeats.
-mt_create_timer(string name, float interval, integer repeats)
+// Creates a timer. Setting count to less than 0 means infinite.
+mt_create_timer(string name, float interval, integer count)
 {
     mtTimerNames += [name];
-    mtTimerData += [FALSE, interval, repeats, 0.0];
+    mtTimerData += [FALSE, interval, count, 0.0];
+
+    // Activate main timer.
+    if (llGetListLength(mtTimerNames) == 1)
+        llSetTimerEvent(MT_MAIN_INTERVAL);
 }
 
 // Removes a timer.
@@ -38,6 +37,10 @@ mt_remove_timer(string name)
     mtTimerNames = llDeleteSubList(mtTimerNames, t_idx, t_idx);
     integer data_idx = t_idx * MT_NUM_OF_DATA_FIELDS;
     mtTimerData = llDeleteSubList(mtTimerData, data_idx, data_idx + MT_NUM_OF_DATA_FIELDS - 1);
+
+    // Deactivate main timer.
+    if (llGetListLength(mtTimerNames) <= 0)
+        llSetTimerEvent(0.0);
 }
 
 // Starts a timer.
@@ -72,21 +75,21 @@ mt_check_timer(integer t_idx)
     integer data_idx = t_idx * MT_NUM_OF_DATA_FIELDS;
     integer active = llList2Integer(mtTimerData, data_idx);
     float interval = llList2Float(mtTimerData, data_idx+1);
-    integer repeats_left = llList2Integer(mtTimerData, data_idx+2);
+    integer count_remaining = llList2Integer(mtTimerData, data_idx+2);
     float last_run_time = llList2Float(mtTimerData, data_idx+3);
     float elapsed_time = llGetTime() - last_run_time;
-    if (active && repeats_left != 0 && elapsed_time >= interval)
+    if (active && count_remaining != 0 && elapsed_time >= interval)
     {
-        if (repeats_left > 0)
-            mt_update_timer_data(t_idx, [repeats_left - 1], 2);  // Update repeats left.
+        if (count_remaining > 0)
+            mt_update_timer_data(t_idx, [count_remaining - 1], 2);  // Update count remaining.
 
         mt_handle_timer(name, elapsed_time);
         mt_update_timer_data(t_idx, [llGetTime()], 3);  // Update last run.
     }
-    // Clean up.
-    else if (repeats_left == 0)
+    // Mark timer for cleanup.
+    else if (count_remaining == 0)
     {
-        mt_remove_timer(name);
+       mtDeadTimers += [name];
     }
 }
 
@@ -100,14 +103,12 @@ default
 {
     state_entry()
     {
-        mt_init();
-
         // Example code.
-        mt_create_timer("t1", 0.2, 2);
+        mt_create_timer("t1", 0.2, 2);  // Executes twice at interval of 0.2 seconds.
         mt_start_timer("t1");
-        mt_create_timer("t2", 1.0, -1);
+        mt_create_timer("t2", 1.0, -1);  // Executes infinite number of times every second.
         mt_start_timer("t2");
-        mt_create_timer("t3", 5.0, -1);
+        mt_create_timer("t3", 5.0, -1);  // Executes infinite number of times every 5.0 seconds.
         mt_start_timer("t3");
     }
 
@@ -118,6 +119,15 @@ default
         for (; t_idx < num_of_timers; ++t_idx)
         {
             mt_check_timer(t_idx);
+        }
+
+        // Cleanup
+        num_of_timers = llGetListLength(mtDeadTimers);
+        if (num_of_timers > 0)
+        {
+            for (t_idx = 0; t_idx < num_of_timers; ++t_idx)
+                mt_remove_timer(llList2String(mtDeadTimers, t_idx));
+            mtDeadTimers = [];
         }
     }
 }
