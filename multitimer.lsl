@@ -80,10 +80,9 @@ mt_check_timer(integer t_idx)
     float elapsed_time = llGetTime() - last_run_time;
     if (active && count_remaining != 0 && elapsed_time >= interval)
     {
+        mt_handle_timer(name, elapsed_time);
         if (count_remaining > 0)
             mt_update_timer_data(t_idx, [count_remaining - 1], 2);  // Update count remaining.
-
-        mt_handle_timer(name, elapsed_time);
         mt_update_timer_data(t_idx, [llGetTime()], 3);  // Update last run.
     }
     // Mark timer for cleanup.
